@@ -36,7 +36,6 @@ def get_property(property: str, path_to_init_file: pathlib.Path) -> str:
         result = None
     return result
 
-
 setup(
         name=project_name,
         version=get_property("version", path_to_init_file.parent / "version.py"),
