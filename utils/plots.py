@@ -60,22 +60,40 @@ def plot_barplot(df, x_column, y_column):
     plt.ylabel(y_column)
     plt.show()
 
-
-def plot_histplot(df, x_column, y_column):
+def plot_histplot(df, batch_size=5):
     """
-    Plot a histogram of a numerical column.
-
-    Args:
-    - df (pd.DataFrame): The DataFrame containing the data.
-    - x_column (str): The name of the numerical column.
-    - y_column (str): The name of the categorical column (optional).
+    Plot histograms for all columns in the dataset.
+    
+    Parameters:
+        df (DataFrame): The DataFrame containing the data.
+        batch_size (int): Number of columns to plot in each batch.
     """
-    plt.figure(figsize=(10, 6))
-    sns.histplot(df[x_column], kde=True, hue=y_column, multiple="stack")
-    plt.title(f'Histogram of {x_column}')
-    plt.xlabel(x_column)
-    plt.ylabel('Frequency')
-    plt.show()
+    num_columns = len(df.columns)
+    num_batches = (num_columns + batch_size - 1) // batch_size  # Calculate number of batches
+
+    for i in range(num_batches):
+        start_idx = i * batch_size
+        end_idx = min((i + 1) * batch_size, num_columns)
+        
+        batch_columns = df.columns[start_idx:end_idx]
+        
+        fig, axes = plt.subplots(nrows=1, ncols=len(batch_columns), figsize=(16, 6))
+        
+        for ax, column in zip(axes, batch_columns):
+            if df[column].dtype == 'float64' or df[column].dtype == 'int64':
+                sns.histplot(df[column], kde=True, ax=ax)
+                ax.set_title(f'Histogram of {column}')
+                ax.set_xlabel(column)
+                ax.set_ylabel('Frequency')
+            else:
+                sns.countplot(data=df, x=column, order=df[column].value_counts().index, ax=ax)
+                ax.set_title(f'Bar plot of {column}')
+                ax.set_xlabel(column)
+                ax.set_ylabel('Frequency')
+                ax.tick_params(axis='x', rotation=45)
+        
+        plt.tight_layout()
+        plt.show()
 
 def plot_scatterplot(df, x_column, y_column):
     """
