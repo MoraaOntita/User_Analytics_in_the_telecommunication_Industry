@@ -1,24 +1,18 @@
-#!/usr/bin/env python
-
-from setuptools import setup
-from setuptools import find_packages
+from setuptools import setup, find_packages
 import pathlib
 import re
-
 
 this_dir = pathlib.Path(__file__).parent.absolute()
 project_name = "Ml_project"
 package_dir = "src"
 path_to_init_file = this_dir / package_dir / project_name / "__init__.py"
 
-
 with open(this_dir / "README.md", encoding="utf-8") as file:
     long_description = file.read()
 
-
-with open(this_dir / "requirements.txt", encoding="utf-8") as reqs:
-    requirements = [line.strip() for line in reqs]
-
+# Read the contents of requirements.txt
+with open("requirements.txt", "r") as f:
+    requirements = f.read().splitlines()
 
 def get_property(property: str, path_to_init_file: pathlib.Path) -> str:
     """
@@ -37,39 +31,30 @@ def get_property(property: str, path_to_init_file: pathlib.Path) -> str:
     return result
 
 setup(
-        name=project_name,
-        version=get_property("version", path_to_init_file.parent / "version.py"),
-        description="machine learning data science",
-        long_description=long_description,
-        long_description_content_type="text/markdown",
-        author=get_property("__author__", path_to_init_file),
-        author_email=get_property("__author_email__", path_to_init_file),
-        url=get_property("__repository__", path_to_init_file),
-        classifiers=[
-            "Development Status :: 1 - Planning",
-            "Intended Audience :: End Users/Desktop",
-            "Intended Audience :: Developers",
-            "Intended Audience :: System Administrators",
-            "Environment :: Console",
-            "Topic :: Software Development :: Testing",
-            "Natural Language :: English",
-            "Programming Language :: Python :: 3.9",
-            "Operating System :: OS Independent",
-            "Operating System :: Microsoft :: Windows",
-            "Operating System :: POSIX :: Linux",
-            "Operating System :: MacOS :: MacOS X",
-            ],
-        keywords="machine learning data science",
-        package_dir={"": package_dir},
-        packages=find_packages(where=package_dir),
-        package_data={
-            project_name: [],
-            },
-        python_requires=">=3.9",
-        install_requires=requirements,
-        entry_points={
-            "console_scripts": [f"{project_name} = {project_name}.__main__:main",
-                ],
-            },
-        platforms=["any"],
-    )
+    name=project_name,
+    version=get_property("version", path_to_init_file.parent / "version.py"),
+    description="Machine Learning Data Science",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    author=get_property("__author__", path_to_init_file),
+    author_email=get_property("__author_email__", path_to_init_file),
+    url=get_property("__repository__", path_to_init_file),
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ],
+    keywords="machine-learning data-science",
+    package_dir={"": package_dir},
+    packages=find_packages(where=package_dir),
+    package_data={
+        project_name: ["data/*.csv"],  # Example: Include all CSV files in a data directory
+    },
+    python_requires=">=3.9",
+    install_requires=requirements,
+    entry_points={
+        "console_scripts": [f"{project_name} = {project_name}.__main__:main"],
+    },
+    platforms=["any"],
+)
