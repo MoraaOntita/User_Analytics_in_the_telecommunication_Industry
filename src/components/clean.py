@@ -1,12 +1,17 @@
-import pandas as pd
-from sklearn.impute import SimpleImputer
+import os
+import sys
+import logging
+from exception import CustomException
+from components.db_connections import DBConnection
+from utils import log_exception, save_cleaned_file
+
 
 class DataCleaner:
     """
     A class to perform data cleaning operations.
     """
 
-    def __init__(self, threshold=0.7) -> None:
+    def __init__(self, threshold=0.7):
         """
         Initializes the DataCleaner object.
 
@@ -15,7 +20,8 @@ class DataCleaner:
         """
         self.threshold = threshold
 
-    def remove_columns_with_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+    @log_exception
+    def remove_columns_with_missing_values(self, df):
         """
         Removes columns with missing values exceeding the threshold.
 
@@ -30,7 +36,8 @@ class DataCleaner:
         cleaned_df = df.drop(columns=columns_to_drop)
         return cleaned_df
 
-    def fill_missing_values_numerical(self, df: pd.DataFrame) -> pd.DataFrame:
+    @log_exception
+    def fill_missing_values_numerical(self, df):
         """
         Fills missing values in numerical columns with mean.
 
@@ -40,15 +47,14 @@ class DataCleaner:
         Returns:
         - pd.DataFrame: The DataFrame with missing values filled in numerical columns.
         """
-        numerical_cols = df.select_dtypes(include=['number']).columns
-
-        # Fill missing values in numerical columns with mean
-        imputer_numerical = SimpleImputer(strategy='mean')
-        df[numerical_cols] = imputer_numerical.fit_transform(df[numerical_cols])
-
+        numerical_cols = df.select_dtypes(include='number').columns
+        for col in numerical_cols:
+            mean_value = df[col].mean()
+            df[col].fillna(mean_value, inplace=True)
         return df
 
-    def fill_missing_values_categorical(self, df: pd.DataFrame) -> pd.DataFrame:
+    @log_exception
+    def fill_missing_values_categorical(self, df):
         """
         Fills missing values in categorical columns with the mode.
 
@@ -58,10 +64,40 @@ class DataCleaner:
         Returns:
         - pd.DataFrame: The DataFrame with missing values filled in categorical columns.
         """
-        categorical_cols = df.select_dtypes(include=['object']).columns
-
+        categorical_cols = df.select_dtypes(include='object').columns
         for col in categorical_cols:
-            mode_val = df[col].mode()[0]
-            df[col] = df[col].fillna(mode_val)
-
+            mode_value = df[col].mode()[0]
+            df[col].fillna(mode_value, inplace=True)
         return df
+
+
+def main():
+    # Instantiate the DBConnection class
+    db_connection = DBConnection()
+
+    try:
+        # Read the specified table from the database into a Pandas DataFrame
+        table_name = input("Enter the name of the table to clean: ")
+        df = db_connection.read_table_to_dataframe(table_name)
+
+        # Perform data cleaning operations
+        cleaner = DataCleaner()
+        cleaned_df = cleaner.remove_columns_with_missing_values(df)
+        cleaned_df = cleaner.fill_missing_values_numerical(cleaned_df)
+        cleaned_df = cleaner.fill_missing_values_categorical(cleaned_df)
+        
+        # Print the cleaned DataFrame for debugging
+        print("Cleaned DataFrame:", cleaned_df)
+
+        # Save the cleaned DataFrame
+        save_cleaned_file(cleaned_df, f"cleaned_{table_name}.csv")
+
+    except CustomException as e:
+        # Handle any custom exceptions raised during the operations
+        log_exception(e)
+
+if __name__ == "__main__":
+    main()
+
+
+
