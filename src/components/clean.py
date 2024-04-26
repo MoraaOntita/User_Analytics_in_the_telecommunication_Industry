@@ -1,101 +1,59 @@
-import os
 import sys
+import pandas as pd
+from utils import drop_missing_columns, impute_missing_values, save_cleaned_data
+from components.db_connections import DBConnection
 import logging
 from exception import CustomException
-from components.db_connections import DBConnection
-from utils import log_exception, save_cleaned_file
-from utils import load_cleaned_data
+
+# Get logger
+logger = logging.getLogger(__name__)
 
 
-class DataCleaner:
+def clean_data(table_name):
     """
-    A class to perform data cleaning operations.
+    Clean the data by dropping columns with more than 70% missing values and imputing missing values.
+    Save cleaned data to artifacts folder.
     """
-
-    def __init__(self, threshold=0.7):
-        """
-        Initializes the DataCleaner object.
-
-        Args:
-        - threshold (float): The threshold for dropping columns with missing values.
-        """
-        self.threshold = threshold
-
-    @log_exception
-    def remove_columns_with_missing_values(self, df):
-        """
-        Removes columns with missing values exceeding the threshold.
-
-        Args:
-        - df (pd.DataFrame): The input DataFrame.
-
-        Returns:
-        - pd.DataFrame: The DataFrame with columns removed.
-        """
-        missing_percentage = df.isnull().mean()
-        columns_to_drop = missing_percentage[missing_percentage > self.threshold].index
-        cleaned_df = df.drop(columns=columns_to_drop)
-        return cleaned_df
-
-    @log_exception
-    def fill_missing_values_numerical(self, df):
-        """
-        Fills missing values in numerical columns with mean.
-
-        Args:
-        - df (pd.DataFrame): The input DataFrame.
-
-        Returns:
-        - pd.DataFrame: The DataFrame with missing values filled in numerical columns.
-        """
-        numerical_cols = df.select_dtypes(include='number').columns
-        for col in numerical_cols:
-            mean_value = df[col].mean()
-            df[col].fillna(mean_value, inplace=True)
-        return df
-
-    @log_exception
-    def fill_missing_values_categorical(self, df):
-        """
-        Fills missing values in categorical columns with the mode.
-
-        Args:
-        - df (pd.DataFrame): The input DataFrame.
-
-        Returns:
-        - pd.DataFrame: The DataFrame with missing values filled in categorical columns.
-        """
-        categorical_cols = df.select_dtypes(include='object').columns
-        for col in categorical_cols:
-            mode_value = df[col].mode()[0]
-            df[col].fillna(mode_value, inplace=True)
-        return df
-
-
-
-def main():
     try:
-        # Load cleaned data
-        cleaned_data = load_cleaned_data("../artifacts/cleaned_xdr_data.csv")
+        # Instantiate DBConnection class
+        db_connection = DBConnection()
 
-        # Perform data cleaning operations
-        cleaner = DataCleaner()
-        cleaned_df = cleaner.remove_columns_with_missing_values(cleaned_data)
-        cleaned_df = cleaner.fill_missing_values_numerical(cleaned_df)
-        cleaned_df = cleaner.fill_missing_values_categorical(cleaned_df)
-        
-        # Print the cleaned DataFrame for debugging
-        print("Cleaned DataFrame:", cleaned_df)
+        # Read the specified table from the database into a Pandas DataFrame
+        df = db_connection.read_table_to_dataframe(table_name)
+        logger.info("Data loaded successfully from table: %s", table_name)
 
-        # Save the cleaned DataFrame
-        save_cleaned_file(cleaned_df, "path/to/save/cleaned_data.csv")  # Adjust the save file path as needed
+        # Drop columns with more than 70% missing values
+        df = drop_missing_columns(df)
+
+        # Impute missing values
+        df = impute_missing_values(df)
+
+        # Save cleaned data
+        save_cleaned_data(df, 'cleaned_data.csv')
+        logger.info("Data cleaned and saved successfully")
 
     except CustomException as e:
-        # Handle any custom exceptions raised during the operations
-        log_exception(e)
+        # Handle custom exceptions
+        logger.error("Custom Exception occurred: %s", e)
+        raise
+    except Exception as e:
+        # Handle other exceptions
+        error_message = f"Error cleaning data: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
+
 
 if __name__ == "__main__":
-    main()
+    # Check if the correct number of arguments is provided
+    if len(sys.argv) != 2:
+        print("Usage: python clean.py <table_name>")
+        sys.exit(1)
+
+    # Get the table name from command-line argument
+    table_name = sys.argv[1]
+
+    # Call the clean_data function with the provided table name
+    clean_data(table_name)
 
 
 

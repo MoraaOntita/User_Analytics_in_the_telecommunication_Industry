@@ -1,98 +1,165 @@
-import os
-import sys
-import logging
 import pandas as pd
+import os
+import logging
+from config import MISSING_THRESHOLD, ARTIFACTS_DIR
 from exception import CustomException
+import sys
+
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.decomposition import PCA
+from config import PCA_COMPONENTS
+from sklearn.model_selection import train_test_split
+from config import ARTIFACTS_DIR, TEST_SIZE 
+
+# Get logger
+logger = logging.getLogger(__name__)
 
 
-def log_exception(func):
+def drop_missing_columns(df):
     """
-    A decorator function to log exceptions.
+    Drop columns with more than MISSING_THRESHOLD missing values.
     """
+    try:
+        threshold = MISSING_THRESHOLD * len(df)
+        cleaned_df = df.dropna(axis=1, thresh=threshold)
+        logger.info("Dropped columns with more than %d missing values", threshold)
+        return cleaned_df
+    except Exception as e:
+        error_message = f"Error dropping missing columns: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
 
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            error_message = f"Error in {func.__name__}: {str(e)}"
-            logging.error(error_message)
-            raise CustomException(error_message, error_detail=sys.exc_info())
 
-    return wrapper
-
-
-def save_cleaned_file(df: pd.DataFrame, filename: str) -> None:
+def impute_missing_values(df):
     """
-    Saves the cleaned DataFrame to the artifacts directory.
-
-    Args:
-    - df (pd.DataFrame): The cleaned DataFrame.
-    - filename (str): The filename for the cleaned file.
+    Impute missing values in numerical columns with mean and categorical columns with mode.
     """
-    artifacts_dir = os.path.join(os.getcwd(), "artifacts")
-    os.makedirs(artifacts_dir, exist_ok=True)
-    cleaned_file_path = os.path.join(artifacts_dir, filename)
-    df.to_csv(cleaned_file_path, index=False)
-    logging.info(f"Cleaned file saved to: {cleaned_file_path}")
+    try:
+        numerical_cols = df.select_dtypes(include='number').columns
+        categorical_cols = df.select_dtypes(exclude='number').columns
+
+        # Impute numerical columns with mean
+        df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].mean())
+
+        # Impute categorical columns with mode
+        df[categorical_cols] = df[categorical_cols].fillna(df[categorical_cols].mode().iloc[0])
+
+        logger.info("Imputed missing values")
+        return df
+    except Exception as e:
+        error_message = f"Error imputing missing values: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
+
+
+def save_cleaned_data(df, file_name):
+    """
+    Save cleaned data to artifacts folder.
+    """
+    try:
+        # Create artifacts directory if it doesn't exist
+        if not os.path.exists(ARTIFACTS_DIR):
+            os.makedirs(ARTIFACTS_DIR)
+
+        file_path = os.path.join(ARTIFACTS_DIR, file_name)
+        df.to_csv(file_path, index=False)
+        logger.info("Cleaned data saved successfully to %s", file_path)
+    except Exception as e:
+        error_message = f"Error saving cleaned data: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
+
+
+################################################################################################################################ Data_transformation
+
+def encode_categorical_variables(df):
+    """
+    Encode categorical variables using label encoding.
+    """
+    # Identify categorical columns
+    categorical_cols = df.select_dtypes(include=['object']).columns
     
-def load_cleaned_data(file_path: str) -> pd.DataFrame:
+    # Perform label encoding
+    label_encoder = LabelEncoder()
+    for col in categorical_cols:
+        df[col] = label_encoder.fit_transform(df[col])
+    
+    return df
+
+
+def standardize_numerical_values(df):
     """
-    Load cleaned data from a file.
+    Standardize numerical values using StandardScaler.
+    """
+    # Identify numerical columns
+    numerical_cols = df.select_dtypes(include=['float64', 'int64']).columns
+    
+    # Perform standardization
+    scaler = StandardScaler()
+    df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
+    
+    return df
 
-    Args:
-        file_path (str): The path to the cleaned data file.
 
-    Returns:
-        pd.DataFrame: The cleaned data.
+def perform_pca(df):
+    """
+    Perform PCA for dimensionality reduction.
+    """
+    pca = PCA(n_components=PCA_COMPONENTS)
+    pca_data = pca.fit_transform(df)
+    
+    return pd.DataFrame(data=pca_data, columns=[f'PC{i}' for i in range(1, PCA_COMPONENTS+1)])
+
+def save_transformed_data(df, file_name):
+    """
+    Save transformed data to artifacts folder.
     """
     try:
-        cleaned_data = pd.read_csv(file_path)  # Adjust this according to your data format
-        return cleaned_data
+        # Create artifacts directory if it doesn't exist
+        if not os.path.exists(ARTIFACTS_DIR):
+            os.makedirs(ARTIFACTS_DIR)
+
+        file_path = os.path.join(ARTIFACTS_DIR, file_name)
+        df.to_csv(file_path, index=False)
+        logger.info("Transformed data saved successfully to %s", file_path)
     except Exception as e:
-        raise IOError(f"Error loading cleaned data from {file_path}: {str(e)}")
+        error_message = f"Error saving transformed data: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
+    
+###################################################################################################################################################Splitting Data
 
-
-########## Transformation ######################################
-
-def load_data(file_path: str) -> pd.DataFrame:
+def split_data(df):
     """
-    Load data from a file.
-
-    Args:
-        file_path (str): The path to the file.
-
-    Returns:
-        pd.DataFrame: The loaded data.
+    Split the transformed data into train and test sets.
     """
     try:
-        data = pd.read_csv(file_path)  # Modify this according to your data format
-        return data
+        # Split the data using train_test_split
+        train_df, test_df = train_test_split(df, test_size=TEST_SIZE, random_state=42)
+        return train_df, test_df
     except Exception as e:
-        raise IOError(f"Error loading data from {file_path}: {str(e)}")
+        error_message = f"Error splitting data: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
 
-def save_data(data: pd.DataFrame, file_path: str) -> None:
+def save_split_data(train_df, test_df):
     """
-    Save data to a file.
-
-    Args:
-        data (pd.DataFrame): The data to save.
-        file_path (str): The path to save the file.
+    Save train and test data to artifacts folder.
     """
     try:
-        data.to_csv(file_path, index=False)  # Modify this according to your data format
+        # Create artifacts directory if it doesn't exist
+        if not os.path.exists(ARTIFACTS_DIR):
+            os.makedirs(ARTIFACTS_DIR)
+
+        # Save train and test data
+        train_file_path = os.path.join(ARTIFACTS_DIR, 'train_data.csv')
+        test_file_path = os.path.join(ARTIFACTS_DIR, 'test_data.csv')
+        train_df.to_csv(train_file_path, index=False)
+        test_df.to_csv(test_file_path, index=False)
+        logger.info("Train data saved successfully to %s", train_file_path)
+        logger.info("Test data saved successfully to %s", test_file_path)
     except Exception as e:
-        raise IOError(f"Error saving data to {file_path}: {str(e)}")
-
-def save_transformed_data(transformed_data: pd.DataFrame, file_path: str) -> None:
-    """
-    Save transformed data to a file.
-
-    Args:
-        transformed_data (pd.DataFrame): The transformed data to save.
-        file_path (str): The path to save the file.
-    """
-    try:
-        save_data(transformed_data, file_path)
-    except IOError as e:
-        raise IOError(f"Error saving transformed data: {str(e)}")
-
+        error_message = f"Error saving split data: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
