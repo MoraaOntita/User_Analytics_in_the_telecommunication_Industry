@@ -1,9 +1,10 @@
 import sys
 import pandas as pd
 from sklearn.cluster import KMeans
-from joblib import dump
+from utils import save_model
 import logging
 from exception import CustomException
+from config import ARTIFACTS_DIR
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -24,9 +25,8 @@ def train_kmeans(train_data_file, num_clusters):
         kmeans.fit(train_df)
 
         # Save the trained model
-        model_file = "kmeans_model.joblib"
-        dump(kmeans, model_file)
-        logger.info("K-means model trained and saved to %s", model_file)
+        save_model(kmeans, "kmeans_model.pkl")
+        logger.info("K-means model trained and saved")
     except CustomException as e:
         # Handle custom exceptions
         logger.error("Custom Exception occurred: %s", e)

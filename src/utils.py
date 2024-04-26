@@ -12,6 +12,8 @@ from config import PCA_COMPONENTS
 from sklearn.model_selection import train_test_split
 from config import ARTIFACTS_DIR, TEST_SIZE 
 
+import pickle
+
 # Get logger
 logger = logging.getLogger(__name__)
 
@@ -161,5 +163,30 @@ def save_split_data(train_df, test_df):
         logger.info("Test data saved successfully to %s", test_file_path)
     except Exception as e:
         error_message = f"Error saving split data: {str(e)}"
+        logger.error(error_message)
+        raise CustomException(error_message, error_detail=sys.exc_info())
+    
+##################################################################################################################################################Model pickle file
+
+# Get logger
+logger = logging.getLogger(__name__)
+
+def save_model(model, model_name):
+    """
+    Save a trained model to the artifacts directory.
+    
+    Args:
+        model: The trained model object to be saved.
+        model_name: The name of the model file.
+    """
+    try:
+        model_dir = os.path.join(ARTIFACTS_DIR, "models")
+        os.makedirs(model_dir, exist_ok=True)
+        model_file = os.path.join(model_dir, model_name)
+        with open(model_file, 'wb') as f:
+            pickle.dump(model, f)
+        logger.info("Model saved successfully to %s", model_file)
+    except Exception as e:
+        error_message = f"Error saving model: {str(e)}"
         logger.error(error_message)
         raise CustomException(error_message, error_detail=sys.exc_info())
