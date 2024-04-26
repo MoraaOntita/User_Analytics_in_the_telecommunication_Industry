@@ -4,6 +4,7 @@ import logging
 from exception import CustomException
 from components.db_connections import DBConnection
 from utils import log_exception, save_cleaned_file
+from utils import load_cleaned_data
 
 
 class DataCleaner:
@@ -71,18 +72,15 @@ class DataCleaner:
         return df
 
 
-def main():
-    # Instantiate the DBConnection class
-    db_connection = DBConnection()
 
+def main():
     try:
-        # Read the specified table from the database into a Pandas DataFrame
-        table_name = input("Enter the name of the table to clean: ")
-        df = db_connection.read_table_to_dataframe(table_name)
+        # Load cleaned data
+        cleaned_data = load_cleaned_data("../artifacts/cleaned_xdr_data.csv")
 
         # Perform data cleaning operations
         cleaner = DataCleaner()
-        cleaned_df = cleaner.remove_columns_with_missing_values(df)
+        cleaned_df = cleaner.remove_columns_with_missing_values(cleaned_data)
         cleaned_df = cleaner.fill_missing_values_numerical(cleaned_df)
         cleaned_df = cleaner.fill_missing_values_categorical(cleaned_df)
         
@@ -90,7 +88,7 @@ def main():
         print("Cleaned DataFrame:", cleaned_df)
 
         # Save the cleaned DataFrame
-        save_cleaned_file(cleaned_df, f"cleaned_{table_name}.csv")
+        save_cleaned_file(cleaned_df, "path/to/save/cleaned_data.csv")  # Adjust the save file path as needed
 
     except CustomException as e:
         # Handle any custom exceptions raised during the operations
@@ -98,6 +96,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
 
 
