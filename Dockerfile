@@ -5,7 +5,7 @@ FROM python:3.8-slim
 WORKDIR /app
 
 # Copy the model file and the FastAPI app into the container
-COPY artifacts/models/kmeans_model.pkl app.py ./
+COPY artifacts/models/kmeans_model.pkl /app/
 
 # Install FastAPI and scikit-learn (or any other dependencies your model requires)
 RUN pip install fastapi scikit-learn
