@@ -5,16 +5,16 @@ FROM python:3.8-slim
 WORKDIR /app
 
 # Copy the model file and the FastAPI app into the container
-COPY artifacts/models/kmeans_model.pkl main.py ./
+COPY artifacts/models/kmeans_model.pkl app.py ./
 
 # Install FastAPI and scikit-learn (or any other dependencies your model requires)
-RUN pip install fastapi uvicorn scikit-learn
+RUN pip install fastapi scikit-learn
 
 # Expose the port your FastAPI app runs on
-EXPOSE 8000
+EXPOSE 5000
 
 # Command to run the FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
 
 
 
